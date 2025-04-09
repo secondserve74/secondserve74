@@ -1,6 +1,6 @@
 - 👋 Hi, I’m @secondserve74
 - 👀 I’m interested in ...cybersecurity, automation, AI and trading. Learn till i drop.
-- 🌱 I’m currently learning ...CEH in 2024
+- 🌱 I’m currently learning ...OSCP
 - 💞️ I’m looking to collaborate on ...
 - 📫 How to reach me ...iykyk
 
